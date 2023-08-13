@@ -166,11 +166,11 @@ function Get-AtlassianCloudAssetsSchema{
         [ValidateNotNullOrEmpty()]
         [string]$SchemaKey,
  
-        [Parameter(Mandatory, Position=0)]
+        [Parameter(Mandatory, Position=1)]
         [ValidateNotNullOrEmpty()]
         [string]$WorkspaceId,
 
-        [Parameter(Mandatory, Position=1)]
+        [Parameter(Mandatory, Position=2)]
         [ValidateNotNullOrEmpty()]
         [string]$Pat
     )
@@ -186,7 +186,7 @@ function Get-AtlassianCloudAssetsSchema{
 
     if ($SchemaKey) {
         Write-Verbose 'Filtering schemas'
-        return $assetsSchemas | Where-Object {$_.objectSchemaKey -eq $assetsSchemaKey}
+        return $assetsSchemas | Where-Object {$_.objectSchemaKey -eq $SchemaKey}
     } else {
         return $assetsSchemas
     }
@@ -501,6 +501,34 @@ function New-AtlassianCloudJsmCustomerInvite{
     return (Invoke-RestMethod -Method Post -Body $body -Uri (($jsmEndpoint -replace 'servicedeskapi/','servicedesk/1/pages/') + "people/customers/pagination/$ProjectKey/invite") -ContentType application/json -Headers $headers)
 }
 
+function Remove-AtlassianCloudAssetsObject{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Object,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Schema,
+ 
+        [Parameter(Mandatory, Position=2)]
+        [string]$WorkspaceId,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
+
+    $request = Invoke-RestMethod -Method Delete -Uri ($assetsEndpoint + "object/$($Object.id)") -ContentType application/json -Headers $headers
+    return $request
+}
 function Set-AtlassianCloudAssetsObject{
     [CmdletBinding()]
     param(
