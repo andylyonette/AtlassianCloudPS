@@ -344,6 +344,56 @@ function Get-AtlassianCloudAssetsWorkspaceId{
     return $workspaceId
 }
 
+function Get-AtlassianCloudJiraIssue{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$IssueKey,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jiraEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/api/3/"
+
+    return Invoke-RestMethod -Method Get -Uri ($jiraEndpoint + "issue/$IssueKey") -ContentType application/json -Headers $headers
+}
+
+function Get-AtlassianCloudJiraIssueTransition{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$IssueKey,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jiraEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/api/3/"
+
+    return Invoke-RestMethod -Method Get -Uri ($jiraEndpoint + "issue/$IssueKey/transitions") -ContentType application/json -Headers $headers
+}
+
 function Get-AtlassianCloudJsmOrganisation{
     [CmdletBinding()]
     param(
@@ -422,6 +472,95 @@ function Get-AtlassianCloudJsmOrganisationUser{
     }
 }
 
+function Get-AtlassianCloudJsmRequest{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$IssueKey,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jsmEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/servicedeskapi/"
+
+    return Invoke-RestMethod -Method Get -Uri ($jsmEndpoint + "request/$IssueKey") -ContentType application/json -Headers $headers
+}
+
+function Get-AtlassianCloudJsmRequestType{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$RequestTypeId,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ServiceDeskId,
+ 
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jsmEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/servicedeskapi/"
+
+    return Invoke-RestMethod -Method Get -Uri ($jsmEndpoint + "servicedesk/$ServiceDeskId/requesttype/$RequestTypeId") -ContentType application/json -Headers $headers
+}
+
+function Invoke-AtlassianCloudJiraIssueTransition{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$IssueKey,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Transition,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jiraEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/api/3/"
+
+    $body = @{
+        transition = {
+            id = $Transition.id
+        }
+    } | ConvertTo-Json
+
+    return Invoke-RestMethod -Method Post -Body $body -Uri ($jiraEndpoint + "issue/$IssueKey/transitions") -ContentType application/json -Headers $headers
+}
+
 function New-AtlassianCloudJsmCustomer{
     [CmdletBinding()]
     param(
@@ -455,6 +594,41 @@ function New-AtlassianCloudJsmCustomer{
     } | ConvertTo-Json
     
     return Invoke-RestMethod -Method Post -Body $body -Uri ($jsmEndpoint + "customer") -ContentType application/json -Headers $headers
+}
+
+function New-AtlassianCloudJsmRequestComment{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$IssueKey,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Comment,
+
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [bool]$Public,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jsmEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/servicedeskapi/"
+
+
+    $body = @{
+        body = $Comment
+        public = $Public
+    } | ConvertTo-Json
+    
+    return Invoke-RestMethod -Method Post -Body $body -Uri ($jsmEndpoint + "request/$IssueKey/comment") -ContentType application/json -Headers $headers
 }
 
 function Send-AtlassianCloudJsmCustomerInvite{
