@@ -367,7 +367,7 @@ function Find-AtlassianCloudJiraIssue{
     $jiraEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/api/3/"
 
     $body = @{
-
+        jql = $Query
     } | ConvertTo-Json
     $jqlIssueRequest = Invoke-RestMethod -Method Post -Body $body -Uri ($jiraEndpoint + "search?maxResults=1000") -ContentType application/json -Headers $headers
 
@@ -376,14 +376,14 @@ function Find-AtlassianCloudJiraIssue{
         $issues += $issue
     }
 
-    while ($jqlIssueRequest.startAt -lt $jqlIssueRequest.total) {
+    while (($jqlIssueRequest.startAt + $jqlIssueRequest.maxResults) -lt $jqlIssueRequest.total) {
         $end = 2000 + $jqlIssueRequst.startAt
         if ($end -gt $jqlIssueRequst.total) {
             $end = $jqlIssueRequst.total
         }
-        Write-Verbose "Getting issues [$(1000 + $jqlIssueRequst.startAt)-$end/$($jqlIssueRequst.total)]"
+        Write-Verbose "Getting issues [$($jqlIssueRequest.maxResults + $jqlIssueRequst.startAt)-$end/$($jqlIssueRequst.total)]"
 
-        $assetsObjectsRequest = Invoke-RestMethod -Method Post -Body $body -Uri ($jiraEndpoint + "search?maxResults=1000&startAt=$(1000 + $jqlIssueRequst.startAt)") -ContentType application/json -Headers $headers
+        $assetsObjectsRequest = Invoke-RestMethod -Method Post -Body $body -Uri ($jiraEndpoint + "search?maxResults=1000&startAt=$($jqlIssueRequest.maxResults + $jqlIssueRequst.startAt)") -ContentType application/json -Headers $headers
         foreach ($issue in $jqlIssueRequest.issues) {
             $issues += $issue
         }
