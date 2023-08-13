@@ -31,167 +31,6 @@ function Add-AtlassianCloudJsmOrganisationUser{
     return (Invoke-WebRequest -Method Post -Body $body -Uri ($jsmEndpoint + "organization/$($Organisation.id)/user") -ContentType application/json -Headers $headers)
 }
 
-function Convert-AtlassianCloudAssetsApiObjectToPsObject{
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory, Position=0)]
-        [ValidateNotNullOrEmpty()]
-        [psobject]$Schema,
- 
-        [Parameter(Mandatory, Position=1)]
-        [ValidateNotNullOrEmpty()]
-        [psobject]$Object,
- 
-        [Parameter(Mandatory, Position=2)]
-        [ValidateNotNullOrEmpty()]
-        [string]$WorkspaceId,
-
-        [Parameter(Mandatory, Position=3)]
-        [ValidateNotNullOrEmpty()]
-        [string]$Pat
-    )
-
-    $headers = @{
-        Authorization = "Basic $($Pat)"
-    }
-
-    $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
-
-    $assetsObjectTypes = Get-AtlassianCloudAssetsObjectType -Schema $Schema -WorkspaceId $WorkspaceId -Pat $Pat
-    $assetsObjectType = $assetsObjectTypes | Where-Object {$_.id -eq $Object.objectType.id}
-
-    $psAttributes = New-Object -TypeName psobject
-    foreach ($attribute in $Object.attributes) {
-        if ($attribute.objectAttributeValues.searchValue -gt 1) {
-            $psAttributes | Add-Member -MemberType NoteProperty -Name ($assetsObjectType.attributes | Where-Object {$_.id -eq $attribute.objectTypeAttributeId}).name -Value $attribute.objectAttributeValues.searchValue
-        } else {
-            $psAttributes | Add-Member -MemberType NoteProperty -Name ($assetsObjectType.attributes | Where-Object {$_.id -eq $attribute.objectTypeAttributeId}).name -Value @($attribute.objectAttributeValues.searchValue)
-        }
-    }
-
-    foreach ($attribute in $assetsObjectType.attributes | Where-Object {($psAttributes | Get-Member | Where-Object {$_.MemberType -eq 'NoteProperty'}).Name -notcontains $_.name}) {
-        $psAttributes | Add-Member -MemberType NoteProperty -Name $attribute.name -Value @()
-    }
-    
-    $Object.attributes = $psAttributes
-
-    return $Object
-}
-
-function Convert-AtlassianCloudAssetPsObjectToApiObject{
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory, Position=0)]
-        [ValidateNotNullOrEmpty()]
-        [psobject]$Schema,
- 
-        [Parameter(Mandatory, Position=1)]
-        [ValidateNotNullOrEmpty()]
-        [psobject]$Attributes,
- 
-        [Parameter(Mandatory, Position=2)]
-        [ValidateNotNullOrEmpty()]
-        [string]$ObjectTypeName,
-
-        [Parameter(Mandatory, Position=3)]
-        [ValidateNotNullOrEmpty()]
-        [string]$WorkspaceId,
-
-        [Parameter(Mandatory, Position=4)]
-        [ValidateNotNullOrEmpty()]
-        [string]$Pat
-    )
-
-    $headers = @{
-        Authorization = "Basic $($Pat)"
-    }
-
-    $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
-
-    $assetsObjectTypes = Get-AtlassianCloudAssetsObjectType -Schema $Schema -WorkspaceId $WorkspaceId -Pat $Pat
-    $assetsObjectType = $assetsObjectTypes | Where-Object {$_.name -eq $ObjectTypeName}
-
-    $apiObject = @{
-        objectTypeId = $assetsObjectType.id
-        attributes = @(
-            $(
-                foreach ($attribute in ($Attributes | Get-Member | Where-Object {$_.MemberType -eq 'NoteProperty'})) {
-                    @{
-                        objectTypeAttributeId = ($assetsObjectType.attributes | Where-Object {$_.name -eq $attribute.Name}).id
-                        objectAttributeValues = @(
-                            $(
-                                foreach ($value in $Attributes."$($attribute.Name)") {
-                                    @{
-                                        value = $value
-                                    }
-                                }
-                            )
-                        )
-                    }
-                }
-            )
-        )
-    }
-
-    return $apiObject
-}
-
-function Get-AtlassianCloudAssetsWorkspaceId{
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory, Position=0)]
-        [ValidateNotNullOrEmpty()]
-        [string]$AtlassianOrgName,
-
-        [Parameter(Mandatory, Position=1)]
-        [ValidateNotNullOrEmpty()]
-        [string]$Pat
-    )
-
-    $headers = @{
-        Authorization = "Basic $($Pat)"
-    }
-
-    $jsmRoot = "https://$AtlassianOrgName.atlassian.net/rest/servicedeskapi/"
-
-    $workspaceId = (Invoke-RestMethod -Method Get -Uri ($jsmRoot + "assets/workspace") -ContentType application/json -Headers $headers).values.workspaceId
-
-    return $workspaceId
-}
-
-function Get-AtlassianCloudAssetsSchema{
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory, Position=0)]
-        [ValidateNotNullOrEmpty()]
-        [string]$SchemaKey,
- 
-        [Parameter(Mandatory, Position=1)]
-        [ValidateNotNullOrEmpty()]
-        [string]$WorkspaceId,
-
-        [Parameter(Mandatory, Position=2)]
-        [ValidateNotNullOrEmpty()]
-        [string]$Pat
-    )
-
-    $headers = @{
-        Authorization = "Basic $($Pat)"
-    }
-
-    $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
-
-    Write-Verbose 'Getting schemas'
-    $assetsSchemas = (Invoke-RestMethod -Method Get -Uri ($assetsEndpoint + "objectschema/list") -ContentType application/json -Headers $headers).values
-
-    if ($SchemaKey) {
-        Write-Verbose 'Filtering schemas'
-        return $assetsSchemas | Where-Object {$_.objectSchemaKey -eq $SchemaKey}
-    } else {
-        return $assetsSchemas
-    }
-}
-
 function Get-AtlassianCloudAssetsObjectType{
     [CmdletBinding()]
     param(
@@ -243,6 +82,100 @@ function Get-AtlassianCloudAssetsObjectType{
     return $assetsObjectTypesWithAttributes
 }
 
+function Convert-AtlassianCloudAssetsApiObjectToPsObject{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Schema,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Object,
+ 
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$WorkspaceId,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $assetsObjectTypes = Get-AtlassianCloudAssetsObjectType -Schema $Schema -WorkspaceId $WorkspaceId -Pat $Pat
+    $assetsObjectType = $assetsObjectTypes | Where-Object {$_.id -eq $Object.objectType.id}
+
+    $psAttributes = New-Object -TypeName psobject
+    foreach ($attribute in $Object.attributes) {
+        if ($attribute.objectAttributeValues.searchValue -gt 1) {
+            $psAttributes | Add-Member -MemberType NoteProperty -Name ($assetsObjectType.attributes | Where-Object {$_.id -eq $attribute.objectTypeAttributeId}).name -Value $attribute.objectAttributeValues.searchValue
+        } else {
+            $psAttributes | Add-Member -MemberType NoteProperty -Name ($assetsObjectType.attributes | Where-Object {$_.id -eq $attribute.objectTypeAttributeId}).name -Value (New-Object System.Collections.Generic.List[string])
+            $psAttributes."$(($assetsObjectType.attributes | Where-Object {$_.id -eq $attribute.objectTypeAttributeId}).name)".Add($attribute.objectAttributeValues.searchValue)
+        }
+    }
+
+    foreach ($attribute in $assetsObjectType.attributes | Where-Object {($psAttributes | Get-Member | Where-Object {$_.MemberType -eq 'NoteProperty'}).Name -notcontains $_.name}) {
+        $psAttributes | Add-Member -MemberType NoteProperty -Name $attribute.name -Value (New-Object System.Collections.Generic.List[string])
+    }
+    
+    $Object.attributes = $psAttributes
+
+    return $Object
+}
+
+function Convert-AtlassianCloudAssetPsObjectToApiObject{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Schema,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Attributes,
+ 
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ObjectTypeName,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$WorkspaceId,
+
+        [Parameter(Mandatory, Position=4)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $assetsObjectTypes = Get-AtlassianCloudAssetsObjectType -Schema $Schema -WorkspaceId $WorkspaceId -Pat $Pat
+    $assetsObjectType = $assetsObjectTypes | Where-Object {$_.name -eq $ObjectTypeName}
+
+    $apiObject = @{
+        objectTypeId = $assetsObjectType.id
+        attributes = @(
+            $(
+                foreach ($attribute in ($Attributes | Get-Member | Where-Object {$_.MemberType -eq 'NoteProperty'})) {
+                    @{
+                        objectTypeAttributeId = ($assetsObjectType.attributes | Where-Object {$_.name -eq $attribute.Name}).id
+                        objectAttributeValues = @(
+                            $(
+                                foreach ($value in $Attributes."$($attribute.Name)") {
+                                    @{
+                                        value = $value
+                                    }
+                                }
+                            )
+                        )
+                    }
+                }
+            )
+        )
+    }
+
+    return $apiObject
+}
+
 function Get-AtlassianCloudAssetsObject{
     [CmdletBinding()]
     param(
@@ -273,9 +206,9 @@ function Get-AtlassianCloudAssetsObject{
     $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
 
     if ($Schema -and $AQL) {
-        $qlQuery = "objectSchemaId in ($($schema.id)) AND ($AQL)"
+        $qlQuery = "objectSchemaId in ($($Schema.id)) AND ($AQL)"
     } else {
-        $qlQuery = "objectSchemaId in ($($schema.id))"
+        $qlQuery = "objectSchemaId in ($($Schema.id))"
     }
 
     Write-Verbose "Getting objects with $qlQuery"
@@ -353,6 +286,62 @@ function New-AtlassianCloudAssetsObject{
     $psObject = Get-AtlassianCloudAssetsObject -Schema $Schema -AQL "objectId = $($newObject.id)" -IncludeAttributes -WorkspaceId $WorkspaceId -Pat $Pat
 
     return $psObject
+}
+
+function Get-AtlassianCloudAssetsSchema{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SchemaKey,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$WorkspaceId,
+
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
+
+    Write-Verbose 'Getting schemas'
+    $assetsSchemas = (Invoke-RestMethod -Method Get -Uri ($assetsEndpoint + "objectschema/list") -ContentType application/json -Headers $headers).values
+
+    if ($SchemaKey) {
+        Write-Verbose 'Filtering schemas'
+        return $assetsSchemas | Where-Object {$_.objectSchemaKey -eq $SchemaKey}
+    } else {
+        return $assetsSchemas
+    }
+}
+
+function Get-AtlassianCloudAssetsWorkspaceId{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jsmRoot = "https://$AtlassianOrgName.atlassian.net/rest/servicedeskapi/"
+
+    $workspaceId = (Invoke-RestMethod -Method Get -Uri ($jsmRoot + "assets/workspace") -ContentType application/json -Headers $headers).values.workspaceId
+
+    return $workspaceId
 }
 
 function Get-AtlassianCloudJsmOrganisation{
@@ -468,7 +457,7 @@ function New-AtlassianCloudJsmCustomer{
     return Invoke-RestMethod -Method Post -Body $body -Uri ($jsmEndpoint + "customer") -ContentType application/json -Headers $headers
 }
 
-function New-AtlassianCloudJsmCustomerInvite{
+function Send-AtlassianCloudJsmCustomerInvite{
     [CmdletBinding()]
     param(
         [Parameter(Mandatory, Position=0)]
@@ -529,6 +518,7 @@ function Remove-AtlassianCloudAssetsObject{
     $request = Invoke-RestMethod -Method Delete -Uri ($assetsEndpoint + "object/$($Object.id)") -ContentType application/json -Headers $headers
     return $request
 }
+
 function Set-AtlassianCloudAssetsObject{
     [CmdletBinding()]
     param(
