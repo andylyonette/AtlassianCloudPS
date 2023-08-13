@@ -249,45 +249,6 @@ function Get-AtlassianCloudAssetsObject{
     return $assetsPsObjects
 }
 
-function New-AtlassianCloudAssetsObject{
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory, Position=0)]
-        [ValidateNotNullOrEmpty()]
-        [psobject]$Schema,
- 
-        [Parameter(Mandatory, Position=1)]
-        [ValidateNotNullOrEmpty()]
-        [string]$ObjectTypeName,
- 
-        [Parameter(Mandatory, Position=2)]
-        [ValidateNotNullOrEmpty()]
-        [psobject]$Attributes,
-
-        [Parameter(Mandatory, Position=3)]
-        [ValidateNotNullOrEmpty()]
-        [string]$WorkspaceId,
-
-        [Parameter(Mandatory, Position=4)]
-        [ValidateNotNullOrEmpty()]
-        [string]$Pat
-    )
-
-    $headers = @{
-        Authorization = "Basic $($Pat)"
-    }
-
-    $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
-
-    $apiObject = Convert-AtlassianCloudAssetPsObjectToApiObject -Schema $Schema -Attributes $Attributes -ObjectTypeName $ObjectTypeName -WorkspaceId $WorkspaceId -Pat $Pat
-    $body = $apiObject | ConvertTo-Json -Depth 10
-    $newObject = Invoke-RestMethod -Method Post -Body $body -Uri ($assetsEndpoint + "object/create") -ContentType application/json -Headers $headers
-    
-    $psObject = Get-AtlassianCloudAssetsObject -Schema $Schema -AQL "objectId = $($newObject.id)" -IncludeAttributes -WorkspaceId $WorkspaceId -Pat $Pat
-
-    return $psObject
-}
-
 function Get-AtlassianCloudAssetsSchema{
     [CmdletBinding()]
     param(
@@ -342,6 +303,93 @@ function Get-AtlassianCloudAssetsWorkspaceId{
     $workspaceId = (Invoke-RestMethod -Method Get -Uri ($jsmRoot + "assets/workspace") -ContentType application/json -Headers $headers).values.workspaceId
 
     return $workspaceId
+}
+
+function New-AtlassianCloudAssetsObject{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Schema,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ObjectTypeName,
+ 
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Attributes,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$WorkspaceId,
+
+        [Parameter(Mandatory, Position=4)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
+
+    $apiObject = Convert-AtlassianCloudAssetPsObjectToApiObject -Schema $Schema -Attributes $Attributes -ObjectTypeName $ObjectTypeName -WorkspaceId $WorkspaceId -Pat $Pat
+    $body = $apiObject | ConvertTo-Json -Depth 10
+    $newObject = Invoke-RestMethod -Method Post -Body $body -Uri ($assetsEndpoint + "object/create") -ContentType application/json -Headers $headers
+    
+    $psObject = Get-AtlassianCloudAssetsObject -Schema $Schema -AQL "objectId = $($newObject.id)" -IncludeAttributes -WorkspaceId $WorkspaceId -Pat $Pat
+
+    return $psObject
+}
+
+function Find-AtlassianCloudJiraIssue{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Query,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jiraEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/api/3/"
+
+    $body = @{
+
+    } | ConvertTo-Json
+    $jqlIssueRequest = Invoke-RestMethod -Method Post -Body $body -Uri ($jiraEndpoint + "search?maxResults=1000") -ContentType application/json -Headers $headers
+
+    $issues = @()
+    foreach ($issue in $jqlIssueRequest.issues) {
+        $issues += $issue
+    }
+
+    while ($jqlIssueRequest.startAt -lt $jqlIssueRequest.total) {
+        $end = 2000 + $jqlIssueRequst.startAt
+        if ($end -gt $jqlIssueRequst.total) {
+            $end = $jqlIssueRequst.total
+        }
+        Write-Verbose "Getting issues [$(1000 + $jqlIssueRequst.startAt)-$end/$($jqlIssueRequst.total)]"
+
+        $assetsObjectsRequest = Invoke-RestMethod -Method Post -Body $body -Uri ($jiraEndpoint + "search?maxResults=1000&startAt=$(1000 + $jqlIssueRequst.startAt)") -ContentType application/json -Headers $headers
+        foreach ($issue in $jqlIssueRequest.issues) {
+            $issues += $issue
+        }
+    }
+
+    return $issues
 }
 
 function Get-AtlassianCloudJiraIssue{
