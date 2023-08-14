@@ -383,7 +383,7 @@ function Find-AtlassianCloudJiraIssue{
         }
         Write-Verbose "Getting issues [$($jqlIssueRequest.maxResults + $jqlIssueRequst.startAt)-$end/$($jqlIssueRequst.total)]"
 
-        $assetsObjectsRequest = Invoke-RestMethod -Method Post -Body $body -Uri ($jiraEndpoint + "search?maxResults=1000&startAt=$($jqlIssueRequest.maxResults + $jqlIssueRequst.startAt)") -ContentType application/json -Headers $headers
+        $jqlIssueRequest = Invoke-RestMethod -Method Post -Body $body -Uri ($jiraEndpoint + "search?maxResults=1000&startAt=$($jqlIssueRequest.maxResults + $jqlIssueRequst.startAt)") -ContentType application/json -Headers $headers
         foreach ($issue in $jqlIssueRequest.issues) {
             $issues += $issue
         }
