@@ -222,9 +222,7 @@ function Get-AtlassianCloudAssetsObject{
 
     $assetsObjects = @()
     foreach ($assetsObject in $assetsObjectsRequest.values) {
-        if ($assetsObject.objectKey -like "$($assetsSchemaKey)-*") {
-            $assetsObjects += $assetsObject
-        }
+        $assetsObjects += $assetsObject
     }
 
     while ($false -eq $assetsObjectsRequest.isLast) {
