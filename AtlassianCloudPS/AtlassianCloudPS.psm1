@@ -442,6 +442,34 @@ function Get-AtlassianCloudJiraIssueTransition{
     return Invoke-RestMethod -Method Get -Uri ($jiraEndpoint + "issue/$IssueKey/transitions") -ContentType application/json -Headers $headers
 }
 
+function Get-AtlassianCloudJsmApproval{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$IssueKey,
+ 
+        [Parameter(Mandatory = $false, Position=1)]
+        [string]$ApprovalId,
+ 
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jsmEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/servicedeskapi/"
+
+    return (Invoke-RestMethod -Method Get -Uri ($jsmEndpoint + "request/$IssueKey/approval/$ApprovalId") -ContentType application/json -Headers $headers).values
+}
+
 function Get-AtlassianCloudJsmOrganisation{
     [CmdletBinding()]
     param(
@@ -609,6 +637,43 @@ function Invoke-AtlassianCloudJiraIssueTransition{
     return Invoke-RestMethod -Method Post -Body $body -Uri ($jiraEndpoint + "issue/$IssueKey/transitions") -ContentType application/json -Headers $headers
 }
 
+function Invoke-AtlassianCloudJsmRequestApprovalDecision{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$IssueKey,
+
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ApprovalId,
+
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateSet("Approve","Decline")]
+        [string]$Decision,
+
+        [Parameter(Mandatory, Position=4)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $jsmEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/servicedeskapi/"
+
+    $body = @{
+        decision = "$($Decision.ToLower())"
+    } | ConvertTo-Json
+
+    return Invoke-RestMethod -Method Post -Body $body -Uri ($jsmEndpoint + "request/$IssueKey/approval/$ApprovalId") -ContentType application/json -Headers $headers
+}
+
 function New-AtlassianCloudJsmCustomer{
     [CmdletBinding()]
     param(
@@ -679,6 +744,35 @@ function New-AtlassianCloudJsmRequestComment{
     return Invoke-RestMethod -Method Post -Body $body -Uri ($jsmEndpoint + "request/$IssueKey/comment") -ContentType application/json -Headers $headers
 }
 
+function Remove-AtlassianCloudAssetsObject{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Object,
+ 
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [psobject]$Schema,
+ 
+        [Parameter(Mandatory, Position=2)]
+        [string]$WorkspaceId,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
+
+    $request = Invoke-RestMethod -Method Delete -Uri ($assetsEndpoint + "object/$($Object.id)") -ContentType application/json -Headers $headers
+    return $request
+}
+
 function Send-AtlassianCloudJsmCustomerInvite{
     [CmdletBinding()]
     param(
@@ -712,35 +806,6 @@ function Send-AtlassianCloudJsmCustomerInvite{
     return (Invoke-RestMethod -Method Post -Body $body -Uri (($jsmEndpoint -replace 'servicedeskapi/','servicedesk/1/pages/') + "people/customers/pagination/$ProjectKey/invite") -ContentType application/json -Headers $headers)
 }
 
-function Remove-AtlassianCloudAssetsObject{
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory, Position=0)]
-        [ValidateNotNullOrEmpty()]
-        [psobject]$Object,
- 
-        [Parameter(Mandatory, Position=1)]
-        [ValidateNotNullOrEmpty()]
-        [psobject]$Schema,
- 
-        [Parameter(Mandatory, Position=2)]
-        [string]$WorkspaceId,
-
-        [Parameter(Mandatory, Position=3)]
-        [ValidateNotNullOrEmpty()]
-        [string]$Pat
-    )
-
-    $headers = @{
-        Authorization = "Basic $($Pat)"
-    }
-
-    $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
-
-    $request = Invoke-RestMethod -Method Delete -Uri ($assetsEndpoint + "object/$($Object.id)") -ContentType application/json -Headers $headers
-    return $request
-}
-
 function Set-AtlassianCloudAssetsObject{
     [CmdletBinding()]
     param(
@@ -767,7 +832,9 @@ function Set-AtlassianCloudAssetsObject{
     $assetsEndpoint = "https://api.atlassian.com/jsm/assets/workspace/$WorkspaceId/v1/"
 
     $apiObject = Convert-AtlassianCloudAssetPsObjectToApiObject -Attributes $Object.attributes -ObjectTypeName $Object.objectType.name -Schema $Schema -WorkspaceId $WorkspaceId -Pat $Pat
+
     $body = $apiObject | ConvertTo-Json -Depth 10
-    $object = Invoke-RestMethod -Method Put -Body $body -Uri ($assetsEndpoint + "object/$($Object.id)") -ContentType application/json -Headers $headers
-    return Convert-AtlassianCloudAssetsApiObjectToPsObject -Schema $Schema -Object $object -WorkspaceId $WorkspaceId -Pat $Pat
+    $updatedObject = Invoke-RestMethod -Method Put -Body $body -Uri ($assetsEndpoint + "object/$($Object.id)") -ContentType application/json -Headers $headers
+
+    return Convert-AtlassianCloudAssetsApiObjectToPsObject -Schema $Schema -Object $updatedObject -WorkspaceId $WorkspaceId -Pat $Pat
 }
