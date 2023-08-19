@@ -980,7 +980,7 @@ function Remove-AtlassianCloudJsmOrganisationUser{
 
     return Invoke-AtlassianCloudJsmMethod -AtlassianOrgName $AtlassianOrgName -Endpoint "organization/$OrganisationId/user" -Data $data -Method Delete -Pat $Pat -Verbose:($Verbose.IsPresent) 
 }
-#endreiong JSM - Organisation
+#endregion JSM - Organisation
 
 #region JSM - Request
 function Get-AtlassianCloudJsmApproval{
@@ -2241,8 +2241,7 @@ function Set-AtlassianCloudJsmServiceDeskRequestTypePropertyKey{
 }
 #endregion JSM - ServiceDesk
 
-
-
+#region JSM - Undocumented
 function Send-AtlassianCloudJsmCustomerInvite{
     [CmdletBinding()]
     param(
@@ -2275,3 +2274,5 @@ function Send-AtlassianCloudJsmCustomerInvite{
     } | ConvertTo-Json
     return (Invoke-RestMethod -Method Post -Body $body -Uri (($jsmEndpoint -replace 'servicedeskapi/','servicedesk/1/pages/') + "people/customers/pagination/$ProjectKey/invite") -ContentType application/json -Headers $headers)
 }
+#endregion JSM - Undocumented
+#endregion JSM
