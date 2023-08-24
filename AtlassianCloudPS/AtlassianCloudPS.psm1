@@ -1,3 +1,4 @@
+#region Internal functions
 function Get-AtlassianCloudJsmEntity{
     [CmdletBinding()]
     param(
@@ -117,6 +118,45 @@ function Invoke-AtlassianCloudJsmMethod{
     Write-Verbose "[POST] $uri"
     return Invoke-RestMethod -Method Post -Body ($Data | ConvertTo-Json -Depth 10) -Uri $uri -ContentType application/json -Headers $headers -Verbose:($Verbose.IsPresent)
 }
+#endregion Internal functions
+
+#region General functions
+function Convert-AtlassicanCloudApiKeyToPat{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ApiKey,
+
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$EmailAddress
+    )
+
+    $text = $EmailAddress + ':' + $ApiKey
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
+    return [Convert]::ToBase64String($bytes)
+}
+
+function Get-AtlassianCloudTenantInfo{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    $headers = @{
+        Authorization = "Basic $($Pat)"
+    }
+
+    return Invoke-RestMethod -Method Get -Uri "https://$orgName.atlassian.net/_edge/tenant_info" -ContentType application/json -Headers $headers
+}
+#endregion General functions
 
 #region Assets
 function Add-AtlassianCloudJsmOrganisationUser{
@@ -461,7 +501,7 @@ function Get-AtlassianCloudAssetsWorkspaceId{
         [string]$Pat
     )
 
-    return (Get-AtlassianCloudJsmEntity -AtlassianOrgName $AtlassianOrgName -Endpoint "request/$IssueKey/feedback" -Pat $Pat -Experimental -All:($All.IsPresent) -Verbose:($Verbose.IsPresent)).workspaceId
+    return (Get-AtlassianCloudJsmEntity -AtlassianOrgName $AtlassianOrgName -Endpoint "assets/workspace" -Pat $Pat -All:($All.IsPresent) -Verbose:($Verbose.IsPresent)).workspaceId
 }
 
 function New-AtlassianCloudAssetsObject{
@@ -565,6 +605,10 @@ function Set-AtlassianCloudAssetsObject{
     return Convert-AtlassianCloudAssetsApiObjectToPsObject -Schema $Schema -Object $updatedObject -WorkspaceId $WorkspaceId -Pat $Pat
 }
 #endregion Assets
+
+#reion Forms
+
+#endregion Forms
 
 #region Jira
 function Get-AtlassianCloudJiraIssue{
@@ -1724,7 +1768,7 @@ function Get-AtlassianCloudJsmRequestType{
         [switch]$All
     )
 
-    return Get-AtlassianCloudJsmEntity -AtlassianOrgName $AtlassianOrgName -Endpoint "requesttype?searchQuery=$Query$(foreach ($serviceDeskId in $ServiceDeskIds) {"&serviceDeskId=$serviceDeskId"})" -Pat $Pat -All:($All.IsPresent) -Verbose:($Verbose.IsPresent) 
+    return Get-AtlassianCloudJsmEntity -AtlassianOrgName $AtlassianOrgName -Endpoint "requesttype?searchQuery=$Query$(foreach ($serviceDeskId in $ServiceDeskIds) {"&serviceDeskId=$serviceDeskId"})" -Experimental -Pat $Pat -All:($All.IsPresent) -Verbose:($Verbose.IsPresent) 
 }
 
 #endregion JSM - RequestType
@@ -2266,13 +2310,11 @@ function Send-AtlassianCloudJsmCustomerInvite{
         Authorization = "Basic $($Pat)"
     }
 
-    $jsmEndpoint = "https://$AtlassianOrgName.atlassian.net/rest/servicedeskapi/"
-
-
     $body = @{
         emails = @($EmailAddress)
     } | ConvertTo-Json
-    return (Invoke-RestMethod -Method Post -Body $body -Uri (($jsmEndpoint -replace 'servicedeskapi/','servicedesk/1/pages/') + "people/customers/pagination/$ProjectKey/invite") -ContentType application/json -Headers $headers)
+
+    return Invoke-RestMethod -Method Post -Body $body -Uri "https://$AtlassianOrgName.atlassian.net/rest/servicedesk/1/pages/people/customers/pagination/$ProjectKey/invite" -ContentType application/json -Headers $headers
 }
 #endregion JSM - Undocumented
 #endregion JSM
