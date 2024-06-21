@@ -1,7 +1,11 @@
 # AtlassianCloudPS
 Interact with the Atlassian Cloud APIs using PowerShell
 
-Now includes full coverage of the JSM API (not all functions have been tested).
+Now includes:
+- Roughly 85% coverage of the Jira API
+- Full coverage of the JSM API
+- Full coverage of the JSM Assets API
+- Partial coverage of the JSM Forms API.
 
 Upcoming:
 - full coverage of Assets API

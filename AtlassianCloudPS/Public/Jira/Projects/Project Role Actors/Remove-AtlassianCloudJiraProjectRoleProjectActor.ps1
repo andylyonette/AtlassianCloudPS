@@ -1,0 +1,44 @@
+function Remove-AtlassianCloudJiraProjectRoleProjectActor{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [int]$Id,
+
+        [Parameter(Mandatory, Position=1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ProjectKey,
+
+        [Parameter(Mandatory, Position=2)]
+        [ValidateNotNullOrEmpty()]
+        [string]$UserAccountId,
+
+        [Parameter(Mandatory, Position=3)]
+        [ValidateNotNullOrEmpty()]
+        [string]$GroupId,
+
+        [Parameter(Mandatory, Position=4)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AtlassianOrgName,
+
+        [Parameter(Mandatory, Position=5)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Pat
+    )
+
+    if (!$UserAccountId -and !$GroupId) {
+        Write-Error 'Must provide one of UserAccountId and GroupId'
+    } else {
+        if ($UserAccountId -and $GroupId) {
+            Write-Error 'Cannot provide UserAccountId and GroupId at the same time'
+        } else {
+            $endpoint = "project/$ProjectKey/role/$Id?"
+            if ($UserAccountId) {
+                $endpoint += "user=$UserAccountId"
+            } else {
+                $endpoint += "groupId=$GroupId"
+            }
+        }
+    }
+    return Invoke-AtlassianCloudJiraMethod -Method Delete -AtlassianOrgName $AtlassianOrgName -Endpoint $endpoint -Pat $Pat -Verbose:($Verbose.IsPresent)
+}

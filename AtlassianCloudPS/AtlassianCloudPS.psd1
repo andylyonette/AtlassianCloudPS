@@ -12,7 +12,7 @@
 RootModule = 'AtlassianCloudPS.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.6.2'
+ModuleVersion = '0.9.0'
 
 # Supported PSEditions
 CompatiblePSEditions = 'Core', 'Desktop'
@@ -27,7 +27,7 @@ Author = 'Andy Lyonette'
 CompanyName = 'ALM Consulting Ltd'
 
 # Copyright statement for this module
-Copyright = '(c) 2023 ALM Consulting Ltd. All rights reserved'
+Copyright = '(c) 2024 ALM Consulting Ltd. All rights reserved'
 
 # Description of the functionality provided by this module
 Description = 'Interact with the Atlassian Cloud APIs using PowerShell'
